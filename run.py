@@ -1,4 +1,6 @@
-from UPISAS.strategies.swim_reactive_strategy import ReactiveAdaptationManager
+from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
+# from UPISAS.strategies.empty_strategy import EmptyStrategy
+
 from UPISAS.exemplar import Exemplar
 from UPISAS.exemplars.swim import SWIM
 import signal
@@ -8,12 +10,12 @@ import time
 if __name__ == '__main__':
     
     exemplar = SWIM(auto_start=True)
-    time.sleep(3)
+    time.sleep(30)
     exemplar.start_run()
     time.sleep(3)
 
     try:
-        strategy = ReactiveAdaptationManager(exemplar)
+        strategy = SignalBasedStrategy(exemplar)
 
         strategy.get_monitor_schema()
         strategy.get_adaptation_options_schema()

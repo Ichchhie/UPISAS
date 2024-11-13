@@ -10,15 +10,15 @@ class SWIM(Exemplar):
     A class which encapsulates a self-adaptive exemplar run in a docker container.
     """
     _container_name = ""
-    def __init__(self, auto_start: "Whether to immediately start the container after creation" =False, container_name = "swim"
+    def __init__(self, auto_start: "Whether to immediately start the container after creation" =False, container_name = ""
                  ):
         '''Create an instance of the SWIM exemplar'''
         swim_docker_kwargs = {
             "name":  container_name,
-            "image": "egalberts/swim:http",
-            "ports" : {5901: 5901, 6901: 6901, 3000: 3000, 4242: 4242}}
+            "image": "dingnet",
+            "ports" : {8080:8080}}
 
-        super().__init__("http://localhost:3000", swim_docker_kwargs, auto_start)
+        super().__init__("http://localhost:8080", swim_docker_kwargs, auto_start)
     
     def start_run(self):
         self.exemplar_container.exec_run(cmd = ' sh -c "cd ~/seams-swim/swim_HTTP/simulations/swim/ && ./run.sh sim 1" ', detach=True)
