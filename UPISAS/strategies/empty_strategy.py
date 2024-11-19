@@ -18,7 +18,7 @@ class EmptyStrategy(Strategy):
                     'id': 0,
                     'adaptations': [
                         {
-                            'name': 'sampling_rate',
+                            'name': 'transmissionPower',
                             'value': 10
                         }
                     ]
