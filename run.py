@@ -2,14 +2,14 @@ from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
 # from UPISAS.strategies.empty_strategy import EmptyStrategy
 
 from UPISAS.exemplar import Exemplar
-from UPISAS.exemplars.swim import SWIM
+from UPISAS.exemplars.dingnet import DINGNET
 import signal
 import sys
 import time
 
 if __name__ == '__main__':
     
-    exemplar = SWIM(auto_start=True)
+    exemplar = DINGNET(auto_start=True)
     time.sleep(30)
     exemplar.start_run()
     time.sleep(3)

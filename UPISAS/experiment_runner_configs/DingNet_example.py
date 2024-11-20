@@ -17,7 +17,7 @@ from os.path import dirname, realpath
 import time
 
 from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
-from UPISAS.exemplars.swim import SWIM
+from UPISAS.exemplars.dingnet import DINGNET
 
 
 class RunnerConfig:
@@ -71,7 +71,7 @@ class RunnerConfig:
 
     def before_run(self) -> None:
         """Set up the exemplar and strategy before a run starts."""
-        self.exemplar = SWIM(auto_start=True)
+        self.exemplar = DINGNET(auto_start=True)
         self.strategy = SignalBasedStrategy(self.exemplar)
         time.sleep(3)
         output.console_log("Config.before_run() called!")
