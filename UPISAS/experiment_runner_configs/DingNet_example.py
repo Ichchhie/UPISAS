@@ -15,6 +15,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 from os.path import dirname, realpath
 import time
+import statistics
 
 from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
 from UPISAS.exemplars.dingnet import DINGNET
@@ -60,8 +61,9 @@ class RunnerConfig:
         factor1 = FactorModel("rt_threshold", [0.75, 0.50, 0.25])
         self.run_table_model = RunTableModel(
             factors=[factor1],
+            repetitions=10,
             exclude_variations=[],
-            data_columns=['utility']
+            data_columns=['highest_received_signal','transmission_power','energy_efficiency']
         )
         return self.run_table_model
 
@@ -72,6 +74,9 @@ class RunnerConfig:
     def before_run(self) -> None:
         """Set up the exemplar and strategy before a run starts."""
         self.exemplar = DINGNET(auto_start=True)
+        time.sleep(30)
+        self.exemplar.start_run()
+        time.sleep(3)
         self.strategy = SignalBasedStrategy(self.exemplar)
         time.sleep(3)
         output.console_log("Config.before_run() called!")
@@ -79,7 +84,6 @@ class RunnerConfig:
     def start_run(self, context: RunnerContext) -> None:
         """Start the target system and set up run-specific parameters."""
         self.strategy.RT_THRESHOLD = float(context.run_variation['rt_threshold'])
-        self.exemplar.start_run()
         time.sleep(3)
         output.console_log("Config.start_run() called!")
 
@@ -104,6 +108,21 @@ class RunnerConfig:
 
         output.console_log("Config.interact() called!")
 
+    def calculate_energy_consumption(self,transmission_power_dbm, packets_sent, sampling_rate):
+        # Convert transmission power from dBm to Watts
+        power_mw = 10 ** (transmission_power_dbm / 10)
+        power_watts = power_mw / 1000  # Convert mW to Watts
+
+        # Calculate transmission time
+        transmission_time = packets_sent / sampling_rate  # in seconds
+
+        # Compute energy consumption
+        energy_consumed = power_watts * transmission_time  # in Joules
+        print(f"Energy Consumption: {energy_consumed:.3f} Joules")
+
+        return energy_consumed
+
+ 
     def stop_measurement(self, context: RunnerContext) -> None:
         """Stop any measurements after the run."""
         output.console_log("Config.stop_measurement() called!")
@@ -118,18 +137,32 @@ class RunnerConfig:
         output.console_log("Config.populate_run_data() called!")
 
         mon_data = self.strategy.knowledge.monitored_data
-        utilities = []
+        transmissionPowerUtilities = []
+        highestReceivedSignalUtilities = []
+        energyEfficiencyUtilities = []
+
 
         for mote_state in mon_data.get("moteStates", []):
-            for mote in mote_state:
-                highest_signal = mote["packetsLost"]  # Replace this field with "highestReceivedSignal" if updated
-                transmission_power = mote["transmissionPower"]
+            mote = mote_state[0]
+            highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
+            transmission_power = mote["transmissionPower"]
+            packets_sent = mote["packetsSent"]
+            sampling_rate = mote["samplingRate"]  
 
-                # Compute utility based on highest signal
-                utility = max(0, transmission_power - highest_signal)
-                utilities.append(utility)
+            # Compute utility based on highest signal
+            # utility = max(0, transmission_power - highest_signal)
+            energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
+            energyEfficiencyUtilities.append(energy_efficiency)
+            transmissionPowerUtilities.append(transmission_power)
+            highestReceivedSignalUtilities.append(highest_received_signal)
 
-        return {"utility": statistics.mean(utilities) if utilities else 0}
+        print("statistics", statistics)
+        # return {"utility": statistics.mean(utilities) if utilities else 0}
+        return {"highest_received_signal": statistics.mean(highestReceivedSignalUtilities), 
+        "transmission_power": statistics.mean(transmissionPowerUtilities),
+        "energy_efficiency": statistics.mean(energyEfficiencyUtilities) }
+
+        # return {"energy_efficiency": energy_efficiency}
 
     def after_experiment(self) -> None:
         """Perform any cleanup after the experiment."""
