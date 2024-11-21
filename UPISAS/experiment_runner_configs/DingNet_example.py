@@ -58,7 +58,7 @@ class RunnerConfig:
 
     def create_run_table_model(self) -> RunTableModel:
         """Define the factors and data columns for the experiment."""
-        factor1 = FactorModel("rt_threshold", [0.75, 0.50, 0.25])
+        factor1 = FactorModel("adaptation_strategy", ["provoost"])
         self.run_table_model = RunTableModel(
             factors=[factor1],
             repetitions=10,
@@ -93,18 +93,16 @@ class RunnerConfig:
 
     def interact(self, context: RunnerContext) -> None:
         """Interact with the system or block until the run completes."""
-        time_slept = 0
-        self.strategy.get_monitor_schema()
-        self.strategy.get_adaptation_options_schema()
-        self.strategy.get_execute_schema()
+        for x in range(100):
+            self.strategy.get_monitor_schema()
+            self.strategy.get_adaptation_options_schema()
+            self.strategy.get_execute_schema()
 
-        while time_slept < 10:
             self.strategy.monitor(verbose=True)
             if self.strategy.analyze():
                 if self.strategy.plan():
                     self.strategy.execute()
-            time.sleep(3)
-            time_slept += 3
+
 
         output.console_log("Config.interact() called!")
 

@@ -10,7 +10,7 @@ class DINGNET(Exemplar):
     A class which encapsulates a self-adaptive exemplar run in a docker container.
     """
     _container_name = ""
-    def __init__(self, auto_start: "Whether to immediately start the container after creation" =False, container_name = ""
+    def __init__(self, auto_start: "Whether to immediately start the container after creation" =False, container_name = "dingnet"
                  ):
         '''Create an instance of the DINGNET exemplar'''
         dingnet_docker_kwargs = {

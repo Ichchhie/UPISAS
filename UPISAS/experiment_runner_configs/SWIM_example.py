@@ -112,7 +112,7 @@ class RunnerConfig:
         self.strategy.get_execute_schema()
 
         
-
+        #adapt more than 3 times and then do the mean of the adaptations for each repetition
         while time_slept < 10:
             
             self.strategy.monitor(verbose=True)
