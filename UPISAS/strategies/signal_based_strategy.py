@@ -9,8 +9,6 @@ class SignalBasedStrategy(Strategy):
         print("analyze class")
         # Extract mote states from monitored data
         mote_states = self.knowledge.monitored_data.get("moteStates", [])
-        # print("knowledge", self.knowledge.monitored_data)
-        # print("mote states", mote_states)
         self.knowledge.analysis_data = {}
 
         # Define signal strength thresholds
@@ -21,12 +19,8 @@ class SignalBasedStrategy(Strategy):
         for mote_state in mote_states:
 
             mote = mote_state[0]
-            # mote_id = mote.get("eui")  # Use the unique identifier for each mote
-
-            # print("mote info", mote)
             mote_id = initial_mote_id  # Unique ID for each mote
             initial_mote_id += 1
-            # this should be changed later to "highestReceivedSignal"
             highest_signal = mote["highestReceivedSignal"]
             transmission_power = mote["transmissionPower"]
             logging.debug("transmissionPower {transmission_power}")
@@ -81,9 +75,4 @@ class SignalBasedStrategy(Strategy):
 
         return True
 
-    # def execute(self,adaptation=None):
-    #     # Send the planned adaptations to the execute endpoint
-    #     adaptation_plan = self.knowledge.plan_data
-    #     print("knowledge plan data")
-    #     # self.execute(adaptation=adaptation_plan)
-    #     return True
+
