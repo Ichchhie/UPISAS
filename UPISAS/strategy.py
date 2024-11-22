@@ -31,7 +31,7 @@ class Strategy(ABC):
             if key not in data:
                 data[key] = []
             data[key].append(fresh_data[key])
-        if(verbose): print("[Knowledge]\tdata monitored so far: " + str(self.knowledge.monitored_data))
+        # if(verbose): print("[Knowledge]\tdata monitored so far: " + str(self.knowledge.monitored_data))
         return True
 
     def execute(self, adaptation=None, endpoint_suffix="execute", with_validation=True):
@@ -43,10 +43,6 @@ class Strategy(ABC):
             validate_schema(adaptation, self.knowledge.execute_schema)
         url = '/'.join([self.exemplar.base_endpoint, endpoint_suffix])
         response = requests.put(url, json=adaptation)
-    
-
-        print("[Execute]\tposted configuration: " + str(adaptation))
-        print("response code ", response.status_code)
         if response.status_code == 404:
             logging.error("Cannot execute adaptation on remote system, check that the execute endpoint exists.")
             raise EndpointNotReachable

@@ -54,6 +54,10 @@ class RunnerConfig:
             (RunnerEvents.AFTER_EXPERIMENT, self.after_experiment),
         ])
         self.run_table_model = None  # Initialized later
+        self.transmissionPowerList = []
+        self.highestReceivedSignalList = []
+        self.energyEfficiencyList = []
+        self.packetlossPercentageList = []
         output.console_log("Custom config loaded")
 
     def create_run_table_model(self) -> RunTableModel:
@@ -61,9 +65,11 @@ class RunnerConfig:
         factor1 = FactorModel("adaptation_strategy", ["provoost"])
         self.run_table_model = RunTableModel(
             factors=[factor1],
-            repetitions=10,
+            repetitions=30,
             exclude_variations=[],
-            data_columns=['highest_received_signal','transmission_power','energy_efficiency']
+            # data_columns=['highest_received_signal','transmission_power','energy_efficiency']
+            data_columns=['highest_received_signal','transmission_power','packet_loss','total_energy_consumption']
+
         )
         return self.run_table_model
 
@@ -83,7 +89,7 @@ class RunnerConfig:
 
     def start_run(self, context: RunnerContext) -> None:
         """Start the target system and set up run-specific parameters."""
-        self.strategy.RT_THRESHOLD = float(context.run_variation['rt_threshold'])
+        # self.strategy.RT_THRESHOLD = float(context.run_variation['rt_threshold'])
         time.sleep(3)
         output.console_log("Config.start_run() called!")
 
@@ -93,7 +99,10 @@ class RunnerConfig:
 
     def interact(self, context: RunnerContext) -> None:
         """Interact with the system or block until the run completes."""
-        for x in range(100):
+        mon_data = self.strategy.knowledge.monitored_data
+
+        for x in range(50):
+
             self.strategy.get_monitor_schema()
             self.strategy.get_adaptation_options_schema()
             self.strategy.get_execute_schema()
@@ -103,8 +112,23 @@ class RunnerConfig:
                 if self.strategy.plan():
                     self.strategy.execute()
 
+            for mote_state in mon_data.get("moteStates", []):
+                mote = mote_state[0]
+                highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
+                transmission_power = mote["transmissionPower"]
+                packets_sent = mote["packetsSent"]
+                packet_loss_percentage = mote["packetLoss"]
+                sampling_rate = mote["samplingRate"]  
 
-        output.console_log("Config.interact() called!")
+                # Compute utility based on highest signal
+                # utility = max(0, transmission_power - highest_signal)
+                energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
+                self.energyEfficiencyList.append(energy_efficiency)
+                self.packetlossPercentageList.append(packet_loss_percentage)
+                self.transmissionPowerList.append(transmission_power)
+                self.highestReceivedSignalList.append(highest_received_signal)
+
+        output.console_log(f"Config.interact() called")
 
     def calculate_energy_consumption(self,transmission_power_dbm, packets_sent, sampling_rate):
         # Convert transmission power from dBm to Watts
@@ -134,31 +158,29 @@ class RunnerConfig:
         """Parse and process measurement data into a results dictionary."""
         output.console_log("Config.populate_run_data() called!")
 
-        mon_data = self.strategy.knowledge.monitored_data
-        transmissionPowerUtilities = []
-        highestReceivedSignalUtilities = []
-        energyEfficiencyUtilities = []
+        # mon_data = self.strategy.knowledge.monitored_data
 
 
-        for mote_state in mon_data.get("moteStates", []):
-            mote = mote_state[0]
-            highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
-            transmission_power = mote["transmissionPower"]
-            packets_sent = mote["packetsSent"]
-            sampling_rate = mote["samplingRate"]  
+        # for mote_state in mon_data.get("moteStates", []):
+        #     mote = mote_state[0]
+        #     highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
+        #     transmission_power = mote["transmissionPower"]
+        #     packets_sent = mote["packetsSent"]
+        #     sampling_rate = mote["samplingRate"]  
 
-            # Compute utility based on highest signal
-            # utility = max(0, transmission_power - highest_signal)
-            energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
-            energyEfficiencyUtilities.append(energy_efficiency)
-            transmissionPowerUtilities.append(transmission_power)
-            highestReceivedSignalUtilities.append(highest_received_signal)
+        #     # Compute utility based on highest signal
+        #     # utility = max(0, transmission_power - highest_signal)
+        #     energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
+        #     energyEfficiencyUtilities.append(energy_efficiency)
+        #     transmissionPowerUtilities.append(transmission_power)
+        #     highestReceivedSignalUtilities.append(highest_received_signal)
 
         print("statistics", statistics)
         # return {"utility": statistics.mean(utilities) if utilities else 0}
-        return {"highest_received_signal": statistics.mean(highestReceivedSignalUtilities), 
-        "transmission_power": statistics.mean(transmissionPowerUtilities),
-        "energy_efficiency": statistics.mean(energyEfficiencyUtilities) }
+        return {"highest_received_signal": statistics.mean(self.highestReceivedSignalList), 
+        "transmission_power": statistics.mean(self.transmissionPowerList),
+        "packet_loss": f"{statistics.mean(self.packetlossPercentageList)*100:.2f}%",
+        "total_energy_consumption": f"{statistics.mean(self.energyEfficiencyList)*1000:.2f}mJ"}
 
         # return {"energy_efficiency": energy_efficiency}
 
