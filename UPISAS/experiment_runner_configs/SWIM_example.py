@@ -113,7 +113,7 @@ class RunnerConfig:
 
         
         #adapt more than 3 times and then do the mean of the adaptations for each repetition
-        while time_slept < 10:
+        while time_slept < 300:
             
             self.strategy.monitor(verbose=True)
             if self.strategy.analyze():

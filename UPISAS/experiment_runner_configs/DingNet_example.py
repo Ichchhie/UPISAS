@@ -67,7 +67,6 @@ class RunnerConfig:
             factors=[factor1],
             repetitions=30,
             exclude_variations=[],
-            # data_columns=['highest_received_signal','transmission_power','energy_efficiency']
             data_columns=['highest_received_signal','transmission_power','packet_loss','total_energy_consumption']
 
         )
@@ -89,7 +88,6 @@ class RunnerConfig:
 
     def start_run(self, context: RunnerContext) -> None:
         """Start the target system and set up run-specific parameters."""
-        # self.strategy.RT_THRESHOLD = float(context.run_variation['rt_threshold'])
         time.sleep(3)
         output.console_log("Config.start_run() called!")
 
@@ -114,14 +112,12 @@ class RunnerConfig:
 
             for mote_state in mon_data.get("moteStates", []):
                 mote = mote_state[0]
-                highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
+                highest_received_signal = mote["highestReceivedSignal"]  
                 transmission_power = mote["transmissionPower"]
                 packets_sent = mote["packetsSent"]
                 packet_loss_percentage = mote["packetLoss"]
                 sampling_rate = mote["samplingRate"]  
 
-                # Compute utility based on highest signal
-                # utility = max(0, transmission_power - highest_signal)
                 energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
                 self.energyEfficiencyList.append(energy_efficiency)
                 self.packetlossPercentageList.append(packet_loss_percentage)
@@ -158,31 +154,12 @@ class RunnerConfig:
         """Parse and process measurement data into a results dictionary."""
         output.console_log("Config.populate_run_data() called!")
 
-        # mon_data = self.strategy.knowledge.monitored_data
-
-
-        # for mote_state in mon_data.get("moteStates", []):
-        #     mote = mote_state[0]
-        #     highest_received_signal = mote["highestReceivedSignal"]  # Replace this field with "highestReceivedSignal" if updated
-        #     transmission_power = mote["transmissionPower"]
-        #     packets_sent = mote["packetsSent"]
-        #     sampling_rate = mote["samplingRate"]  
-
-        #     # Compute utility based on highest signal
-        #     # utility = max(0, transmission_power - highest_signal)
-        #     energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
-        #     energyEfficiencyUtilities.append(energy_efficiency)
-        #     transmissionPowerUtilities.append(transmission_power)
-        #     highestReceivedSignalUtilities.append(highest_received_signal)
-
+      
         print("statistics", statistics)
-        # return {"utility": statistics.mean(utilities) if utilities else 0}
         return {"highest_received_signal": statistics.mean(self.highestReceivedSignalList), 
         "transmission_power": statistics.mean(self.transmissionPowerList),
         "packet_loss": f"{statistics.mean(self.packetlossPercentageList)*100:.2f}%",
         "total_energy_consumption": f"{statistics.mean(self.energyEfficiencyList)*1000:.2f}mJ"}
-
-        # return {"energy_efficiency": energy_efficiency}
 
     def after_experiment(self) -> None:
         """Perform any cleanup after the experiment."""
