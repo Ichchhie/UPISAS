@@ -89,3 +89,53 @@ class Strategy(ABC):
         """ ... """
         pass
 
+    @abstractmethod
+    def initialize_q_table(self):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def map_to_state(self, signal_strength, packet_loss):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def simulation_running(self):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def adjust_thresholds(self, signal_strength, packet_loss, performance_goal):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def random_action(self):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def increase_power(self, transmission_power):
+        """ ... """
+        pass 
+
+    @abstractmethod
+    def decrease_power(self, transmission_power):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def maintain_power(self):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def check_performance_goal(self, q_table, performance_goal):
+        """ ... """
+        pass
+
+    @abstractmethod
+    def best_action(self, q_table, state):
+        """ ... """
+        pass
+

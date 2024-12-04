@@ -23,7 +23,7 @@ class SignalBasedStrategy(Strategy):
             initial_mote_id += 1
             highest_signal = mote["highestReceivedSignal"]
             transmission_power = mote["transmissionPower"]
-            logging.debug("transmissionPower {transmission_power}")
+            logging.debug("transmissionPower {transmission_power}")       
 
             # Adapt power based on received signal strength
             if highest_signal < low_signal_threshold:
