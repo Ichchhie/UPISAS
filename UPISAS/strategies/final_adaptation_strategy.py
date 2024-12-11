@@ -8,7 +8,7 @@ import random
 
  # Define state bins for signal strength and packet loss
 class QBasedStrategy(Strategy):
-    signal_bins = [-48, -42, 2] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
+    signal_bins = [-43, -42] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
     # low_signal_threshold = -48.0  # dBm
     # high_signal_threshold = -42.0  # dBm
     packet_loss_bins = [0, 0.1, 0.2, 0.3, 0.5]  #  Discretize packetLoss into bins
@@ -263,30 +263,68 @@ class QBasedStrategy(Strategy):
                 print("Performance goal achieved. Stopping training.")
                 #break
 
+            #training is completed so putting the qtable in knowledge here
+            # Save the updated Q-table to the knowledge base
+            print("after training q table", Q_table)
+
+            self.knowledge.analysis_data["QTable"] = Q_table
+
+
             # Initialize the output
             mote_transmission_updates = {}
 
             # Retrieve the Q-table and mote states
-            Q_table = self.knowledge.analysis_data.get("QTable", {})
+            Final_Q_table = self.knowledge.analysis_data.get("QTable", {})
             mote_states = self.knowledge.monitored_data.get("moteStates", [])
 
-            for mote_state in mote_states:
-                mote = mote_state[0]  # Extract mote data
-                mote_id = mote[1]  # Assume each mote has a unique ID
+            initial_mote_id = 0
 
+            for mote_state in mote_states:
+
+                mote = mote_state[0]
+                mote_id = initial_mote_id  # Unique ID for each mote
+                initial_mote_id += 1
+        
                 # Analyze the state and determine the new transmission power
                 new_transmission_power = self.analyze_state(mote)
 
                 # Store the result
                 mote_transmission_updates[mote_id] = new_transmission_power
-
-            return mote_transmission_updates
+                 # Store analyzed result for this mote
+                self.knowledge.analysis_data[mote_id] = {
+                    "recommended_power": new_transmission_power
+                }
+                print("new transmission power", self.knowledge.analysis_data)
+             
 
         # End of training
         print("Training completed.")
 
     def plan(self):
-            return True
+        print("plan class")
+
+        # Use analysis data to create a plan for adapting each mote's transmission power
+        adaptations = []
+        for mote_id, analysis in self.knowledge.analysis_data.items():
+            new_power = analysis["recommended_power"]
+            print("the values in plan", mote_id, new_power)
+            # Create adaptation action for the mote's power setting
+            adaptations.append({
+                "id": mote_id,
+                "adaptations": [
+                    {
+                        "name": "power",
+                        "value": new_power
+                    }
+                ]
+            })
+
+        # Store the plan in knowledge plan_data
+        self.knowledge.plan_data = {
+            "items": adaptations
+        }
+
+        return True
 
 
 
