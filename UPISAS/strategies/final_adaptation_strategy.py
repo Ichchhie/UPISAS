@@ -93,11 +93,62 @@ class QBasedStrategy(Strategy):
         pass  # Placeholder for maintaining power logic
 
     def check_performance_goal(self, q_table, performance_goal):
-        # Placeholder for checking if performance goal is met
-        return False
+        print("enter check performance goal", performance_goal)
+        print("performance_goal:", performance_goal, "Type:", type(performance_goal))
+        # Extract performance goal thresholds
+        max_packet_loss = performance_goal["maxPacketLoss"]
+        print("printing values", max_packet_loss)
+        min_signal = performance_goal["signalRange"][0]
+        max_signal = performance_goal["signalRange"][1]
+        print("printing min and max signal", min_signal, max_signal)
+
+        
+        
+        # Track the number of states meeting performance criteria
+        successful_states = 0
+        total_states = 0
+
+        for state, actions in q_table.items():
+            print("enter for loop", state, actions)
+            signal_strength, packet_loss = state
+            # Check if the state meets performance goals
+            if min_signal <= signal_strength <= max_signal and packet_loss <= max_packet_loss:
+                total_states += 1
+                # Check if the preferred action ("Maintain") has the highest Q-value
+                best_action = max(actions, key=actions.get)
+                if best_action == "Maintain":
+                    successful_states += 1
+
+        # Define success criteria (e.g., 80% of valid states must prefer "Maintain")
+        success_ratio = successful_states / total_states if total_states > 0 else 0
+        required_ratio = 0.8  # Example threshold
+        
+        return success_ratio >= required_ratio
 
     def best_action(self, q_table, state):
         return max(q_table[state], key=q_table[state].get)
+
+    def analyze_state(self, mote_state):
+
+        # Extract mote parameters
+        signal_strength = mote_state["highestReceivedSignal"]
+        packet_loss = mote_state["packetLoss"]
+        transmission_power = mote_state["transmissionPower"]
+
+        # Map the current state to discrete bins
+        current_state = self.map_to_state(signal_strength, packet_loss)
+
+        # Select the best action based on the Q-table
+        best_action = self.best_action(self.knowledge.analysis_data["QTable"], current_state)
+
+        # Determine the new transmission power based on the selected action
+        if best_action == "Increase":
+            transmission_power = min(transmission_power + 1, 15)  # Max power is 15
+        elif best_action == "Decrease":
+            transmission_power = max(transmission_power - 1, -1)  # Min power is -1
+        # If "Maintain", keep the current transmission power
+
+        return transmission_power
 
     def analyze(self):
         print("enter analyse")
@@ -110,7 +161,7 @@ class QBasedStrategy(Strategy):
         min_epsilon = 0.1  # Minimum exploration rate
         max_episodes = 1000  # Maximum number of episodes
         convergence_threshold = 0.01  # Threshold for Q-value changes
-        performance_goal = {"self.maxPacketLoss": 0.05, "signalRange": (-48, -42)}  # Goal for stopping
+        performance_goal = {"maxPacketLoss": 0.05, "signalRange": (-48, -42)}  # Goal for stopping
 
         # Training Loop
         for episode in range(max_episodes):
@@ -210,7 +261,26 @@ class QBasedStrategy(Strategy):
             # Check if performance goal is met
             if self.check_performance_goal(Q_table, performance_goal):
                 print("Performance goal achieved. Stopping training.")
-                break
+                #break
+
+            # Initialize the output
+            mote_transmission_updates = {}
+
+            # Retrieve the Q-table and mote states
+            Q_table = self.knowledge.analysis_data.get("QTable", {})
+            mote_states = self.knowledge.monitored_data.get("moteStates", [])
+
+            for mote_state in mote_states:
+                mote = mote_state[0]  # Extract mote data
+                mote_id = mote[1]  # Assume each mote has a unique ID
+
+                # Analyze the state and determine the new transmission power
+                new_transmission_power = self.analyze_state(mote)
+
+                # Store the result
+                mote_transmission_updates[mote_id] = new_transmission_power
+
+            return mote_transmission_updates
 
         # End of training
         print("Training completed.")
