@@ -23,7 +23,7 @@ def get_dynamic_state(signal_strength, packet_loss):
 
 # Define state bins for signal strength and packet loss
 class QBasedStrategy(Strategy):
-    signal_bins = [-100, -90, -80, -70, -60, -50, -43, -42] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
+    signal_bins = [-53, -51, -49, -48, -45, -42, -40] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
     # low_signal_threshold = -48.0  # dBm
     # high_signal_threshold = -42.0  # dBm
     packet_loss_bins = [0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0]  #  Discretize packetLoss into bins
@@ -31,8 +31,8 @@ class QBasedStrategy(Strategy):
     # Define actions
     actions = ["Increase", "Decrease", "Maintain"]
     # Signal strength and packet loss thresholds
-    minSignal = -48
-    maxSignal = -42
+    minSignal = -52
+    maxSignal = -48
     maxPacketLoss = 0.05
 
     def initialize_q_table(self):
@@ -248,9 +248,11 @@ class QBasedStrategy(Strategy):
                 # Signal Strength Reward
                 signal_reward = 0
                 if self.minSignal <= newSignalStrength <= self.maxSignal:
+                    print("positive reward")
                     signal_reward = 1  # Full reward for acceptable signal strength
                 else:
                     # Penalty for weak or too strong signal
+                    print("negative reward")
                     signal_reward = -0.5 * abs(newSignalStrength - self.maxSignal)  # Gradual penalty based on deviation
 
                 # Packet Loss Reward
@@ -336,6 +338,7 @@ class QBasedStrategy(Strategy):
                 "recommended_power": new_transmission_power
             }
             print("new transmission power", self.knowledge.analysis_data)
+        return True
              
 
     def plan(self):
@@ -344,18 +347,19 @@ class QBasedStrategy(Strategy):
         # Use analysis data to create a plan for adapting each mote's transmission power
         adaptations = []
         for mote_id, analysis in self.knowledge.analysis_data.items():
-            new_power = analysis["recommended_power"]
-            print("the values in plan", mote_id, new_power)
-            # Create adaptation action for the mote's power setting
-            adaptations.append({
-                "id": mote_id,
-                "adaptations": [
-                    {
-                        "name": "power",
-                        "value": new_power
-                    }
-                ]
-            })
+            if "recommended_power" in analysis:
+                new_power = analysis["recommended_power"]
+                print("the values in plan", mote_id, new_power)
+                # Create adaptation action for the mote's power setting
+                adaptations.append({
+                    "id": mote_id,
+                    "adaptations": [
+                        {
+                            "name": "power",
+                            "value": new_power
+                        }
+                    ]
+                })
 
         # Store the plan in knowledge plan_data
         self.knowledge.plan_data = {

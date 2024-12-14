@@ -17,7 +17,7 @@ from os.path import dirname, realpath
 import time
 import statistics
 
-from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
+from UPISAS.strategies.final_adaptation_strategy import QBasedStrategy
 from UPISAS.exemplars.dingnet import DINGNET
 
 
@@ -36,6 +36,7 @@ class RunnerConfig:
 
     """Wait time between runs."""
     time_between_runs_in_ms: int = 1000
+    isTrainingCompleted = False
 
     exemplar = None
     strategy = None
@@ -82,7 +83,7 @@ class RunnerConfig:
         time.sleep(30)
         self.exemplar.start_run()
         time.sleep(3)
-        self.strategy = SignalBasedStrategy(self.exemplar)
+        self.strategy = QBasedStrategy(self.exemplar)
         time.sleep(3)
         output.console_log("Config.before_run() called!")
 
@@ -105,7 +106,12 @@ class RunnerConfig:
             self.strategy.get_adaptation_options_schema()
             self.strategy.get_execute_schema()
 
+            print("istrainingComplete value", self.isTrainingCompleted)
             self.strategy.monitor(verbose=True)
+            if(self.isTrainingCompleted == False): 
+                self.strategy.train()
+                self.isTrainingCompleted = True
+            
             if self.strategy.analyze():
                 if self.strategy.plan():
                     self.strategy.execute()
