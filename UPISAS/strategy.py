@@ -144,3 +144,8 @@ class Strategy(ABC):
         """ ... """
         pass
 
+    @abstractmethod
+    def get_dynamic_state(self, signal_strength, packet_loss):
+        """ ... """
+        pass
+
