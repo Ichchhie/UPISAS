@@ -13,6 +13,7 @@ if __name__ == '__main__':
     time.sleep(30)
     exemplar.start_run()
     time.sleep(3)
+    isTrainingCompleted = False
 
     try:
         strategy = QBasedStrategy(exemplar)
@@ -24,9 +25,13 @@ if __name__ == '__main__':
         while True:
             input("Try to adapt?")
             strategy.monitor(verbose=True)
-            strategy.analyze()
-                #if strategy.plan():
-                #    strategy.execute()
+            if(isTrainingCompleted == False): 
+                strategy.train()
+                isTrainingCompleted = True
+            
+            if strategy.analyze():
+                if strategy.plan():
+                    strategy.execute()
             
     except (Exception, KeyboardInterrupt) as e:
         print(str(e))

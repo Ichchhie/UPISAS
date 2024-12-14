@@ -80,6 +80,11 @@ class Strategy(ABC):
         return response.json()
 
     @abstractmethod
+    def train(self):
+        """ ... """
+        pass
+
+    @abstractmethod
     def analyze(self):
         """ ... """
         pass

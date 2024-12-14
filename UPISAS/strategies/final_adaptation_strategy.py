@@ -166,8 +166,8 @@ class QBasedStrategy(Strategy):
 
         return transmission_power
 
-    def analyze(self):
-        print("enter analyse")
+    def train(self):
+        print("enter train")
         Q_table = self.initialize_q_table()  # Q-table with states (signalStrength, packetLoss) and actions
         print("Q table", Q_table)
         alpha = 0.2  # Learning rate
@@ -175,7 +175,7 @@ class QBasedStrategy(Strategy):
         epsilon = 1.0  # Exploration rate (start with full exploration)
         epsilon_decay = 0.995  # Decay factor for epsilon
         min_epsilon = 0.1  # Minimum exploration rate
-        max_episodes = 2000  # Maximum number of episodes
+        max_episodes = 10  # Maximum number of episodes
         convergence_threshold = 0.01  # Threshold for Q-value changes
         performance_goal = {"maxPacketLoss": 0.05, "signalRange": (-48, -42)}  # Goal for stopping
 
@@ -187,6 +187,7 @@ class QBasedStrategy(Strategy):
             mote_states = self.knowledge.monitored_data.get("moteStates", [])
             self.knowledge.analysis_data = {}
             initial_mote_id = 0
+            print("check mote state values", mote_states)
 
             for mote_state in mote_states:
                 mote = mote_state[0]
@@ -306,37 +307,36 @@ class QBasedStrategy(Strategy):
             print("after training q table", Q_table)
 
             self.knowledge.analysis_data["QTable"] = Q_table
-
-
-            # Initialize the output
-            mote_transmission_updates = {}
-
-            # Retrieve the Q-table and mote states
-            Final_Q_table = self.knowledge.analysis_data.get("QTable", {})
-            mote_states = self.knowledge.monitored_data.get("moteStates", [])
-
-            initial_mote_id = 0
-
-            for mote_state in mote_states:
-
-                mote = mote_state[0]
-                mote_id = initial_mote_id  # Unique ID for each mote
-                initial_mote_id += 1
-        
-                # Analyze the state and determine the new transmission power
-                new_transmission_power = self.analyze_state(mote)
-
-                # Store the result
-                mote_transmission_updates[mote_id] = new_transmission_power
-                 # Store analyzed result for this mote
-                self.knowledge.analysis_data[mote_id] = {
-                    "recommended_power": new_transmission_power
-                }
-                print("new transmission power", self.knowledge.analysis_data)
-             
-
-        # End of training
+         # End of training
         print("Training completed.")
+    
+    def analyze(self):
+        print("enter analyze")
+        # Initialize the output
+        mote_transmission_updates = {}
+        # Retrieve the Q-table and mote states
+        Final_Q_table = self.knowledge.analysis_data.get("QTable", {})
+        mote_states = self.knowledge.monitored_data.get("moteStates", [])
+
+        initial_mote_id = 0
+
+        for mote_state in mote_states:
+
+            mote = mote_state[0]
+            mote_id = initial_mote_id  # Unique ID for each mote
+            initial_mote_id += 1
+    
+            # Analyze the state and determine the new transmission power
+            new_transmission_power = self.analyze_state(mote)
+
+            # Store the result
+            mote_transmission_updates[mote_id] = new_transmission_power
+                # Store analyzed result for this mote
+            self.knowledge.analysis_data[mote_id] = {
+                "recommended_power": new_transmission_power
+            }
+            print("new transmission power", self.knowledge.analysis_data)
+             
 
     def plan(self):
         print("plan class")
