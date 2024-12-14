@@ -6,19 +6,34 @@ logging.basicConfig(level=logging.INFO)
 # Initialization
 import random
 
- # Define state bins for signal strength and packet loss
+def get_dynamic_state(signal_strength, packet_loss):
+    # Introduce some randomness to simulate more varied states
+    noise_signal = random.uniform(-5, 5)  # Random noise for signal strength
+    noise_packet_loss = random.uniform(-0.05, 0.05)  # Random noise for packet loss
+    
+    # Apply the noise to the current signal and packet loss
+    dynamic_signal = signal_strength + noise_signal
+    dynamic_packet_loss = packet_loss + noise_packet_loss
+
+    # Ensure the signal is within the expected range
+    dynamic_signal = max(min(dynamic_signal, 0), -100)
+    dynamic_packet_loss = max(min(dynamic_packet_loss, 1.0), 0)
+
+    return dynamic_signal, dynamic_packet_loss
+
+# Define state bins for signal strength and packet loss
 class QBasedStrategy(Strategy):
-    signal_bins = [-43, -42] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
+    signal_bins = [-100, -90, -80, -70, -60, -50, -43, -42] # Discretize signalStrength into bins // TASK - FIND THE VALUES 
     # low_signal_threshold = -48.0  # dBm
     # high_signal_threshold = -42.0  # dBm
-    packet_loss_bins = [0, 0.1, 0.2, 0.3, 0.5]  #  Discretize packetLoss into bins
+    packet_loss_bins = [0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0]  #  Discretize packetLoss into bins
 
     # Define actions
     actions = ["Increase", "Decrease", "Maintain"]
     # Signal strength and packet loss thresholds
     minSignal = -48
     maxSignal = -42
-    maxPacketLoss = 5
+    maxPacketLoss = 0.05
 
     def initialize_q_table(self):
         print("enter q table initialise")
@@ -73,10 +88,11 @@ class QBasedStrategy(Strategy):
             self.maxSignal -= adjustment_step  # Constrain power usage
 
         # Ensure thresholds remain within logical boundaries
+        print("printing minSignal before max",self.minSignal,self.maxSignal)
         self.minSignal = max(self.minSignal, -100)  # Avoid excessive relaxation
         self.maxSignal = min(self.maxSignal, 0)     # Avoid excessive tightening
 
-        print(self.minSignal, self.maxSignal, self.maxPacketLoss)
+        print("printing minSignal, maxSignal",self.minSignal, self.maxSignal, self.maxPacketLoss)
         return self.minSignal, self.maxSignal, self.maxPacketLoss
 
     def random_action(self):
@@ -154,12 +170,12 @@ class QBasedStrategy(Strategy):
         print("enter analyse")
         Q_table = self.initialize_q_table()  # Q-table with states (signalStrength, packetLoss) and actions
         print("Q table", Q_table)
-        alpha = 0.1  # Learning rate
+        alpha = 0.2  # Learning rate
         gamma = 0.9  # Discount factor
         epsilon = 1.0  # Exploration rate (start with full exploration)
-        epsilon_decay = 0.99  # Decay factor for epsilon
+        epsilon_decay = 0.995  # Decay factor for epsilon
         min_epsilon = 0.1  # Minimum exploration rate
-        max_episodes = 1000  # Maximum number of episodes
+        max_episodes = 2000  # Maximum number of episodes
         convergence_threshold = 0.01  # Threshold for Q-value changes
         performance_goal = {"maxPacketLoss": 0.05, "signalRange": (-48, -42)}  # Goal for stopping
 
@@ -181,8 +197,9 @@ class QBasedStrategy(Strategy):
                 transmission_power = mote["transmissionPower"]
  
             print("check teh values", self.minSignal)
+            dynamic_signal, dynamic_packet_loss = get_dynamic_state(signalStrength, packetLoss)
             # Get current signal strength and packet loss
-            state = self.map_to_state(signalStrength, packetLoss)  # Map to a discrete state
+            state = self.map_to_state(dynamic_signal, dynamic_packet_loss)  # Map to a discrete state
 
             # Initialize variables for convergence check
             max_q_change = 0
@@ -217,14 +234,35 @@ class QBasedStrategy(Strategy):
 
                 print()
 
+
                 # Get new signal  packet loss
                 new_state = self.map_to_state(newSignalStrength, newPacketLoss)
 
                 # Calculate reward based on signal and packet loss
-                if self.minSignal <= newSignalStrength <= self.maxSignal and newPacketLoss <= self.maxPacketLoss:
-                    reward = 1  # Positive reward
+                #if self.minSignal <= newSignalStrength <= self.maxSignal and newPacketLoss <= self.maxPacketLoss:
+                #    reward = 1  # Positive reward
+                #else:
+                #    reward = -1  # Negative reward
+
+                # Signal Strength Reward
+                signal_reward = 0
+                if self.minSignal <= newSignalStrength <= self.maxSignal:
+                    signal_reward = 1  # Full reward for acceptable signal strength
                 else:
-                    reward = -1  # Negative reward
+                    # Penalty for weak or too strong signal
+                    signal_reward = -0.5 * abs(newSignalStrength - self.maxSignal)  # Gradual penalty based on deviation
+
+                # Packet Loss Reward
+                packet_loss_reward = 0
+                if newPacketLoss <= self.maxPacketLoss:
+                    packet_loss_reward = 1  # Full reward for acceptable packet loss
+                else:
+                    # Gradual penalty based on deviation
+                    packet_loss_reward = -0.5 * (newPacketLoss - self.maxPacketLoss)
+
+                # Total Reward
+                reward = signal_reward + packet_loss_reward
+
                 
                 print("reward calculated", reward)
                 print("Q table", Q_table)
@@ -251,9 +289,9 @@ class QBasedStrategy(Strategy):
             self.minSignal, self.maxSignal, self.maxPacketLoss = self.adjust_thresholds(self.minSignal, self.maxSignal, self.maxPacketLoss)
 
             # Step 7: Check stopping criteria
-            if max_q_change < convergence_threshold:
-                print("Convergence achieved. Stopping training.")
-                break
+            #if max_q_change < convergence_threshold:
+            #    print("Convergence achieved. Stopping training.")
+            #    break
 
             # Decay epsilon to reduce exploration over time
             epsilon = max(min_epsilon, epsilon * epsilon_decay)
