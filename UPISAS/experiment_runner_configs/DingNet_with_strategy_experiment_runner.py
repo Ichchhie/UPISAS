@@ -63,10 +63,10 @@ class RunnerConfig:
 
     def create_run_table_model(self) -> RunTableModel:
         """Define the factors and data columns for the experiment."""
-        factor1 = FactorModel("adaptation_strategy", ["provoost"])
+        factor1 = FactorModel("adaptation_strategy", ["Q-Learning"])
         self.run_table_model = RunTableModel(
             factors=[factor1],
-            repetitions=30,
+            repetitions=3,
             exclude_variations=[],
             data_columns=['highest_received_signal','transmission_power','packet_loss','total_energy_consumption']
 
@@ -76,15 +76,37 @@ class RunnerConfig:
     def before_experiment(self) -> None:
         """Perform any activity required before starting the experiment."""
         output.console_log("Config.before_experiment() called!")
+        print("training", self.isTrainingCompleted)
+        if(self.isTrainingCompleted == False): 
+            self.exemplar = DINGNET(auto_start=True)
+            time.sleep(30)
+            self.exemplar.start_run()
+            time.sleep(3)
+            self.strategy = QBasedStrategy(self.exemplar)
+            time.sleep(3)
+            
+            self.strategy.get_monitor_schema()
+            self.strategy.get_adaptation_options_schema()
+            self.strategy.get_execute_schema()
+            
+            self.strategy.monitor(verbose=True)
+            q_table = self.strategy.train()
+            output.console_log(f"Config.interact() training called")
+            print("q_table", q_table)
+            self.isTrainingCompleted = True
+            # self.exemplar.stop_container()
+            # time.sleep(20)
+        output.console_log("Config.before_experiment() finished!")
+        print("traning", self.isTrainingCompleted)
 
     def before_run(self) -> None:
         """Set up the exemplar and strategy before a run starts."""
-        self.exemplar = DINGNET(auto_start=True)
-        time.sleep(30)
-        self.exemplar.start_run()
-        time.sleep(3)
-        self.strategy = QBasedStrategy(self.exemplar)
-        time.sleep(3)
+        # self.exemplar = DINGNET(auto_start=True)
+        # time.sleep(30)
+        # self.exemplar.start_run()
+        # time.sleep(3)
+        # self.strategy = QBasedStrategy(self.exemplar)
+        # time.sleep(3)
         output.console_log("Config.before_run() called!")
 
     def start_run(self, context: RunnerContext) -> None:
@@ -100,17 +122,17 @@ class RunnerConfig:
         """Interact with the system or block until the run completes."""
         mon_data = self.strategy.knowledge.monitored_data
 
-        for x in range(50):
-
+        print("istrainingComplete train value", self.isTrainingCompleted)
+        for x in range(2):
             self.strategy.get_monitor_schema()
             self.strategy.get_adaptation_options_schema()
             self.strategy.get_execute_schema()
 
-            print("istrainingComplete value", self.isTrainingCompleted)
             self.strategy.monitor(verbose=True)
-            if(self.isTrainingCompleted == False): 
-                self.strategy.train()
-                self.isTrainingCompleted = True
+            # if(self.isTrainingCompleted == False): 
+            #     self.strategy.train()
+            #     output.console_log(f"Config.interact() training called")
+            #     self.isTrainingCompleted = True
             
             if self.strategy.analyze():
                 if self.strategy.plan():
@@ -142,7 +164,7 @@ class RunnerConfig:
 
         # Compute energy consumption
         energy_consumed = power_watts * transmission_time  # in Joules
-        print(f"Energy Consumption: {energy_consumed:.3f} Joules")
+        # print(f"Energy Consumption: {energy_consumed:.3f} Joules")
 
         return energy_consumed
 
