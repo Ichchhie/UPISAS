@@ -309,25 +309,25 @@ class QBasedStrategy(Strategy):
                 state = new_state
                 print("updated q table", state)
 
-            # Step 6: Adjust thresholds (optional)
-            print("need to adjust reached")
-            self.minSignal, self.maxSignal, self.maxPacketLoss = self.adjust_thresholds(newSignalStrength, newPacketLoss, performance_goal)
+                # Step 6: Adjust thresholds (optional)
+                print("need to adjust reached",newSignalStrength, newPacketLoss, performance_goal)
+                self.minSignal, self.maxSignal, self.maxPacketLoss = self.adjust_thresholds(newSignalStrength, newPacketLoss, performance_goal)
 
-            # Step 7: Check stopping criteria
-            #if max_q_change < convergence_threshold:
-            #    print("Convergence achieved. Stopping training.")
-            #    break
+                # Step 7: Check stopping criteria
+                #if max_q_change < convergence_threshold:
+                #    print("Convergence achieved. Stopping training.")
+                #    break
 
-            # Decay epsilon to reduce exploration over time
-            epsilon = max(min_epsilon, epsilon * epsilon_decay)
-            print("calculated epsilon")
-            # Check if performance goal is met
-            if self.check_performance_goal(Q_table, performance_goal):
-                print("Performance goal achieved. Stopping training.")
-                #break
+                # Decay epsilon to reduce exploration over time
+                epsilon = max(min_epsilon, epsilon * epsilon_decay)
+                print("calculated epsilon")
+                # Check if performance goal is met
+                if self.check_performance_goal(Q_table, performance_goal):
+                    print("Performance goal achieved. Stopping training.")
+                    #break
 
-            #training is completed so putting the qtable in knowledge here
-            # Save the updated Q-table to the knowledge base
+                #training is completed so putting the qtable in knowledge here
+                # Save the updated Q-table to the knowledge base
             print("after training q table", Q_table)
 
             self.knowledge.analysis_data["QTable"] = Q_table
