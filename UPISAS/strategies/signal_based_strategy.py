@@ -75,4 +75,57 @@ class SignalBasedStrategy(Strategy):
 
         return True
 
+    def train(self):
+        """ ... """
+        pass
+
+    def initialize_q_table(self):
+        """ ... """
+        pass
+
+    def map_to_state(self, signal_strength, packet_loss):
+        """ ... """
+        pass
+
+    def simulation_running(self):
+        """ ... """
+        pass
+
+    def adjust_thresholds(self, signal_strength, packet_loss, performance_goal):
+        """ ... """
+        pass
+
+    def random_action(self):
+        """ ... """
+        pass
+
+    def increase_power(self, transmission_power):
+        """ ... """
+        pass 
+
+    def decrease_power(self, transmission_power):
+        """ ... """
+        pass
+
+    def maintain_power(self):
+        """ ... """
+        pass
+
+
+    def check_performance_goal(self, q_table, performance_goal):
+        """ ... """
+        pass
+
+
+    def best_action(self, q_table, state):
+        """ ... """
+        pass
+
+
+    def get_dynamic_state(self, signal_strength, packet_loss):
+        """ ... """
+        pass
+
+
+
 
