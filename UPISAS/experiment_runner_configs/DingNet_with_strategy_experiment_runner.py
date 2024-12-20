@@ -18,6 +18,7 @@ import time
 import statistics
 
 from UPISAS.strategies.final_adaptation_strategy import QBasedStrategy
+from UPISAS.strategies.signal_based_strategy import SignalBasedStrategy
 from UPISAS.exemplars.dingnet import DINGNET
 
 
@@ -39,7 +40,9 @@ class RunnerConfig:
     isTrainingCompleted = False
 
     exemplar = None
-    strategy = None
+    adaptationStrategy = None
+    baselineStrategy = None
+    q_table = None
 
     def __init__(self):
         """Executes immediately after program start, on config load."""
@@ -56,14 +59,17 @@ class RunnerConfig:
         ])
         self.run_table_model = None  # Initialized later
         self.transmissionPowerList = []
+        self.baselineTransmissionPowerList = []
         self.highestReceivedSignalList = []
         self.energyEfficiencyList = []
+        self.baselineEnergyEfficiencyList = []
         self.packetlossPercentageList = []
+        self.baselinePacketLossPercentageList = []
         output.console_log("Custom config loaded")
 
     def create_run_table_model(self) -> RunTableModel:
         """Define the factors and data columns for the experiment."""
-        factor1 = FactorModel("adaptation_strategy", ["provoost"])
+        factor1 = FactorModel("adaptation_strategy", ["Q-Learning", "Signal-Based"])
         self.run_table_model = RunTableModel(
             factors=[factor1],
             repetitions=30,
@@ -76,6 +82,35 @@ class RunnerConfig:
     def before_experiment(self) -> None:
         """Perform any activity required before starting the experiment."""
         output.console_log("Config.before_experiment() called!")
+        print("training", self.isTrainingCompleted)
+        if(self.isTrainingCompleted == False): 
+            self.exemplar = DINGNET(auto_start=True)
+            time.sleep(30)
+            self.exemplar.start_run()
+            time.sleep(3)
+            self.adaptationStrategy = QBasedStrategy(self.exemplar)
+            self.baselineStrategy = SignalBasedStrategy(self.exemplar)
+            time.sleep(3)
+            
+            self.adaptationStrategy.get_monitor_schema()
+            self.adaptationStrategy.get_adaptation_options_schema()
+            self.adaptationStrategy.get_execute_schema()
+            
+            self.adaptationStrategy.monitor(verbose=True)
+
+            self.baselineStrategy.get_monitor_schema()
+            self.baselineStrategy.get_adaptation_options_schema()
+            self.baselineStrategy.get_execute_schema()            
+            self.baselineStrategy.monitor(verbose=True)
+
+            self.q_table = self.adaptationStrategy.train()
+            output.console_log(f"Config.interact() training called")
+            print("q_table", self.q_table)
+            self.isTrainingCompleted = True
+            self.exemplar.stop_container()
+            time.sleep(20)
+        output.console_log("Config.before_experiment() finished!")
+        print("traning", self.isTrainingCompleted)
 
     def before_run(self) -> None:
         """Set up the exemplar and strategy before a run starts."""
@@ -83,7 +118,8 @@ class RunnerConfig:
         time.sleep(30)
         self.exemplar.start_run()
         time.sleep(3)
-        self.strategy = QBasedStrategy(self.exemplar)
+        self.adaptationStrategy = QBasedStrategy(self.exemplar)
+        self.baselineStrategy = SignalBasedStrategy(self.exemplar)
         time.sleep(3)
         output.console_log("Config.before_run() called!")
 
@@ -98,38 +134,75 @@ class RunnerConfig:
 
     def interact(self, context: RunnerContext) -> None:
         """Interact with the system or block until the run completes."""
-        mon_data = self.strategy.knowledge.monitored_data
+        mon_data = self.adaptationStrategy.knowledge.monitored_data
+        base_mon_data = self.baselineStrategy.knowledge.monitored_data
 
+        print("istrainingComplete train value", self.isTrainingCompleted)
         for x in range(50):
+            adaptation_strategy = context.run_variation["adaptation_strategy"]
+            print("adaptation strategy", adaptation_strategy)
+            if(adaptation_strategy == "Q-Learning"):
+                self.adaptationStrategy.get_monitor_schema()
+                self.adaptationStrategy.get_adaptation_options_schema()
+                self.adaptationStrategy.get_execute_schema()
 
-            self.strategy.get_monitor_schema()
-            self.strategy.get_adaptation_options_schema()
-            self.strategy.get_execute_schema()
+                self.adaptationStrategy.monitor(verbose=True)
 
-            print("istrainingComplete value", self.isTrainingCompleted)
-            self.strategy.monitor(verbose=True)
-            if(self.isTrainingCompleted == False): 
-                self.strategy.train()
-                self.isTrainingCompleted = True
+                # if(self.isTrainingCompleted == False): 
+                #     self.adaptationStrategy.train()
+                #     output.console_log(f"Config.interact() training called")
+                #     self.isTrainingCompleted = True
             
-            if self.strategy.analyze():
-                if self.strategy.plan():
-                    self.strategy.execute()
+                if self.adaptationStrategy.analyze(self.q_table):
+                    if self.adaptationStrategy.plan():
+                        self.adaptationStrategy.execute()
 
-            for mote_state in mon_data.get("moteStates", []):
-                mote = mote_state[0]
-                highest_received_signal = mote["highestReceivedSignal"]  
-                transmission_power = mote["transmissionPower"]
-                packets_sent = mote["packetsSent"]
-                packet_loss_percentage = mote["packetLoss"]
-                sampling_rate = mote["samplingRate"]  
 
-                energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
-                self.energyEfficiencyList.append(energy_efficiency)
-                self.packetlossPercentageList.append(packet_loss_percentage)
-                self.transmissionPowerList.append(transmission_power)
-                self.highestReceivedSignalList.append(highest_received_signal)
+                mon_data = self.adaptationStrategy.knowledge.monitored_data
+                for mote_state in mon_data.get("moteStates", []):
+                    mote = mote_state[0]
+                    highest_received_signal = mote["highestReceivedSignal"]  
+                    transmission_power = mote["transmissionPower"]
+                    packets_sent = mote["packetsSent"]
+                    packet_loss_percentage = mote["packetLoss"]
+                    sampling_rate = mote["samplingRate"]  
 
+                    energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
+                    self.energyEfficiencyList.append(energy_efficiency)
+                    self.packetlossPercentageList.append(packet_loss_percentage)
+                    self.transmissionPowerList.append(transmission_power)
+                    self.highestReceivedSignalList.append(highest_received_signal)
+
+            elif (adaptation_strategy == "Signal-Based"):
+
+                self.baselineStrategy.get_monitor_schema()
+                self.baselineStrategy.get_adaptation_options_schema()
+                self.baselineStrategy.get_execute_schema()
+
+                self.baselineStrategy.monitor(verbose=True)
+                
+                if self.baselineStrategy.analyze():
+                    if self.baselineStrategy.plan():
+                        self.baselineStrategy.execute()
+
+                base_mon_data = self.baselineStrategy.knowledge.monitored_data
+                for mote_state in base_mon_data.get("moteStates", []):
+                    mote = mote_state[0]
+                    highest_received_signal = mote["highestReceivedSignal"]  
+                    transmission_power = mote["transmissionPower"]
+                    packets_sent = mote["packetsSent"]
+                    packet_loss_percentage = mote["packetLoss"]
+                    sampling_rate = mote["samplingRate"]  
+
+                    energy_efficiency = self.calculate_energy_consumption(transmission_power, packets_sent, sampling_rate)
+                    self.energyEfficiencyList.append(energy_efficiency)
+                    self.packetlossPercentageList.append(packet_loss_percentage)
+                    self.transmissionPowerList.append(transmission_power)
+                    self.highestReceivedSignalList.append(highest_received_signal)
+
+            
+            
+           
         output.console_log(f"Config.interact() called")
 
     def calculate_energy_consumption(self,transmission_power_dbm, packets_sent, sampling_rate):
@@ -142,7 +215,7 @@ class RunnerConfig:
 
         # Compute energy consumption
         energy_consumed = power_watts * transmission_time  # in Joules
-        print(f"Energy Consumption: {energy_consumed:.3f} Joules")
+        # print(f"Energy Consumption: {energy_consumed:.3f} Joules")
 
         return energy_consumed
 

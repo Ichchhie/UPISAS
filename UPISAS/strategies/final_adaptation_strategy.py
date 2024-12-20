@@ -42,18 +42,16 @@ class QBasedStrategy(Strategy):
         # Initialize Q-table as a dictionary
         q_table = {}
         for signal in self.signal_bins:
-            print("logging signal", signal)
             for packet_loss in self.packet_loss_bins:
-                print("logging packet_loss", packet_loss)
+                # print("logging packet_loss", packet_loss)
                 state = (signal, packet_loss)
-                print("logging state", state)
+                # print("logging state", state)
                 q_table[state] = {action: 0.0 for action in self.actions}  # Initializes as floats
-                print("qtable", q_table)
+                # print("qtable", q_table)
 
         return q_table
 
     def map_to_state(self, signal_strength, packet_loss):
-        print("enter map to state")
         # Map continuous values to discrete bins
         
         signal_state = min(self.signal_bins, key=lambda x: abs(x - signal_strength))
@@ -63,60 +61,36 @@ class QBasedStrategy(Strategy):
 
 
     def simulation_running(self):
-        print("enter simulation running")
         # Placeholder for simulation's termination condition
         return random.random() > 0.05
 
     def adjust_thresholds(self, signal_strength, packet_loss, performance_goal):
-
-        print("Entering adjust_thresholds")
-
-        # Extract performance goals
-        max_allowed_packet_loss = performance_goal["maxPacketLoss"]  # Fixed max packet loss
-        target_signal_min, target_signal_max = performance_goal["signalRange"]  # Fixed signal range
-
-        # Adjustment step
+        # Placeholder for threshold adjustment logic
+        print("enter need_to_adjust_thresholds")
         adjustment_step = 1
 
+        observed_packet_loss = packet_loss
+        max_allowed_packet_loss = self.maxPacketLoss #max packet loss set as 5 for now
+
         # Adjust thresholds based on packet loss
-        if packet_loss > max_allowed_packet_loss:
-            # High packet loss: Relax thresholds to improve reliability
+        if observed_packet_loss > max_allowed_packet_loss:
+            # Relax thresholds to improve reliability
             self.minSignal -= adjustment_step  # Allow weaker signals
             self.maxSignal += adjustment_step  # Allow stronger signals
-            print("High packet loss detected; relaxing thresholds.")
-        elif packet_loss < max_allowed_packet_loss / 2:
-            # Low packet loss: Tighten thresholds to conserve energy
+        elif observed_packet_loss < max_allowed_packet_loss / 2:
+            # Tighten thresholds to improve energy efficiency
             self.minSignal += adjustment_step  # Require stronger signals
-            self.maxSignal -= adjustment_step  # Constrain stronger signals
-            print("Low packet loss detected; tightening thresholds.")
-
-        # Adjust thresholds based on signal strength trends
-        if signal_strength < self.minSignal:
-            # Observed signal is too weak: Relax thresholds
-            self.minSignal -= adjustment_step
-            self.maxSignal += adjustment_step
-            print("Signal strength too weak; relaxing thresholds.")
-        elif signal_strength > self.maxSignal:
-            # Observed signal is too strong: Tighten thresholds
-            self.minSignal += adjustment_step
-            self.maxSignal -= adjustment_step
-            print("Signal strength too strong; tightening thresholds.")
+            self.maxSignal -= adjustment_step  # Constrain power usage
 
         # Ensure thresholds remain within logical boundaries
+        print("printing minSignal before max",self.minSignal,self.maxSignal)
         self.minSignal = max(self.minSignal, -100)  # Avoid excessive relaxation
         self.maxSignal = min(self.maxSignal, 0)     # Avoid excessive tightening
 
-        # Ensure thresholds stay aligned with the fixed performance goal
-        self.minSignal = max(self.minSignal, target_signal_min)  # Align with goal's min
-        self.maxSignal = min(self.maxSignal, target_signal_max)  # Align with goal's max
+        print("printing minSignal, maxSignal",self.minSignal, self.maxSignal, self.maxPacketLoss)
+        return self.minSignal, self.maxSignal, self.maxPacketLoss
 
-        # Log the adjusted thresholds
-        print(f"Adjusted thresholds: minSignal={self.minSignal}, maxSignal={self.maxSignal}")
-        print(f"Performance goal remains fixed: {performance_goal}")
-
-        # Return adjusted thresholds and fixed performance goal
-        return self.minSignal, self.maxSignal, performance_goal
-
+    
     def random_action(self):
         return random.choice(["Increase", "Decrease", "Maintain"])
 
@@ -131,14 +105,14 @@ class QBasedStrategy(Strategy):
         pass  # Placeholder for maintaining power logic
 
     def check_performance_goal(self, q_table, performance_goal):
-        print("enter check performance goal", performance_goal)
-        print("performance_goal:", performance_goal, "Type:", type(performance_goal))
+        # print("enter check performance goal", performance_goal)
+        # print("performance_goal:", performance_goal, "Type:", type(performance_goal))
         # Extract performance goal thresholds
         max_packet_loss = performance_goal["maxPacketLoss"]
-        print("printing values", max_packet_loss)
+        # print("printing values", max_packet_loss)
         min_signal = performance_goal["signalRange"][0]
         max_signal = performance_goal["signalRange"][1]
-        print("printing min and max signal", min_signal, max_signal)
+        # print("printing min and max signal", min_signal, max_signal)
 
         
         
@@ -147,7 +121,7 @@ class QBasedStrategy(Strategy):
         total_states = 0
 
         for state, actions in q_table.items():
-            print("enter for loop", state, actions)
+            # print("enter for loop", state, actions)
             signal_strength, packet_loss = state
             # Check if the state meets performance goals
             if min_signal <= signal_strength <= max_signal and packet_loss <= max_packet_loss:
@@ -166,7 +140,7 @@ class QBasedStrategy(Strategy):
     def best_action(self, q_table, state):
         return max(q_table[state], key=q_table[state].get)
 
-    def analyze_state(self, mote_state):
+    def analyze_state(self, mote_state, q_table):
 
         # Extract mote parameters
         signal_strength = mote_state["highestReceivedSignal"]
@@ -177,7 +151,9 @@ class QBasedStrategy(Strategy):
         current_state = self.map_to_state(signal_strength, packet_loss)
 
         # Select the best action based on the Q-table
-        best_action = self.best_action(self.knowledge.analysis_data["QTable"], current_state)
+        # best_action = self.best_action(self.knowledge.analysis_data["QTable"], current_state)
+
+        best_action = self.best_action(q_table, current_state)
 
         # Determine the new transmission power based on the selected action
         if best_action == "Increase":
@@ -191,25 +167,25 @@ class QBasedStrategy(Strategy):
     def train(self):
         print("enter train")
         Q_table = self.initialize_q_table()  # Q-table with states (signalStrength, packetLoss) and actions
-        print("Q table", Q_table)
+        # print("Q table", Q_table)
         alpha = 0.2  # Learning rate
         gamma = 0.9  # Discount factor
         epsilon = 1.0  # Exploration rate (start with full exploration)
         epsilon_decay = 0.995  # Decay factor for epsilon
         min_epsilon = 0.1  # Minimum exploration rate
-        max_episodes = 100  # Maximum number of episodes
+        max_episodes = 500  # Maximum number of episodes
         convergence_threshold = 0.01  # Threshold for Q-value changes
         performance_goal = {"maxPacketLoss": 0.05, "signalRange": (-48, -42)}  # Goal for stopping
 
         # Training Loop
         for episode in range(max_episodes):
-            print("enter episode for loop", episode)
+            print("train count", episode)
             # Step 1: Initialize the environment
             # Extract mote states from monitored data
             mote_states = self.knowledge.monitored_data.get("moteStates", [])
             self.knowledge.analysis_data = {}
             initial_mote_id = 0
-            print("check mote state values", mote_states)
+            # print("check mote state values", mote_states)
 
             for mote_state in mote_states:
                 mote = mote_state[0]
@@ -219,7 +195,7 @@ class QBasedStrategy(Strategy):
                 packetLoss = mote["packetLoss"]
                 transmission_power = mote["transmissionPower"]
  
-            print("check teh values", self.minSignal)
+            # print("check teh values", self.minSignal)
             dynamic_signal, dynamic_packet_loss = self.get_dynamic_state(signalStrength, packetLoss)
             # Get current signal strength and packet loss
             state = self.map_to_state(dynamic_signal, dynamic_packet_loss)  # Map to a discrete state
@@ -255,9 +231,6 @@ class QBasedStrategy(Strategy):
                     newSignalStrength = mote["highestReceivedSignal"]
                     newPacketLoss = mote["packetLoss"]
 
-                print()
-
-
                 # Get new signal  packet loss
                 new_state = self.map_to_state(newSignalStrength, newPacketLoss)
 
@@ -279,38 +252,38 @@ class QBasedStrategy(Strategy):
 
                 # Packet Loss Reward
                 packet_loss_reward = 0
-                if newPacketLoss <= performance_goal["maxPacketLoss"]:
-                    packet_loss_reward = 2  # Stringl reward for low packet loss
+                if newPacketLoss <= self.maxPacketLoss:
+                    packet_loss_reward = 1  # Full reward for acceptable packet loss
                 else:
                     # Gradual penalty based on deviation
-                    packet_loss_reward = -1 * (newPacketLoss -  performance_goal["maxPacketLoss"])
+                    packet_loss_reward = -0.5 * (newPacketLoss - self.maxPacketLoss)
 
-                # Total Reward to prioritize packet loss reduction
-                reward = 0.5 * signal_reward + packet_loss_reward
+                # Total Reward
+                reward = signal_reward + packet_loss_reward
 
                 
-                print("reward calculated", reward)
-                print("Q table", Q_table)
-                print("state and action", state, action)
+                # print("reward calculated", reward)
+                # print("Q table", Q_table)
+                # print("state and action", state, action)
 
                 # Step 5: Update the Q-table
                 old_q_value = Q_table[state][action]  # Should be a float
-                print("old q value", old_q_value)
+                # print("old q value", old_q_value)
                 max_future_q = max(Q_table[new_state].values())  # Should also be a float
-                print("future q value", max_future_q)
+                # print("future q value", max_future_q)
                 Q_table[state][action] = old_q_value + alpha * (reward + gamma * max_future_q - old_q_value)
-                print("updated q table", Q_table)
+                # print("updated q table", Q_table)
 
                 # Track the maximum Q-value change for convergence check
                 max_q_change = max(max_q_change, abs(Q_table[state][action] - old_q_value))
-                print("max q change", max_q_change)
+                # print("max q change", max_q_change)
 
                 # Update the current state
                 state = new_state
-                print("updated q table", state)
+                # print("updated q table", state)
 
                 # Step 6: Adjust thresholds (optional)
-                print("need to adjust reached",newSignalStrength, newPacketLoss, performance_goal)
+                # print("need to adjust reached",newSignalStrength, newPacketLoss, performance_goal)
                 self.minSignal, self.maxSignal, self.maxPacketLoss = self.adjust_thresholds(newSignalStrength, newPacketLoss, performance_goal)
 
                 # Step 7: Check stopping criteria
@@ -320,7 +293,6 @@ class QBasedStrategy(Strategy):
 
                 # Decay epsilon to reduce exploration over time
                 epsilon = max(min_epsilon, epsilon * epsilon_decay)
-                print("calculated epsilon")
                 # Check if performance goal is met
                 if self.check_performance_goal(Q_table, performance_goal):
                     print("Performance goal achieved. Stopping training.")
@@ -328,19 +300,22 @@ class QBasedStrategy(Strategy):
 
                 #training is completed so putting the qtable in knowledge here
                 # Save the updated Q-table to the knowledge base
-            print("after training q table", Q_table)
+            # print("after training q table", Q_table)
 
             self.knowledge.analysis_data["QTable"] = Q_table
          # End of training
         print("Training completed.")
+        return Q_table
     
-    def analyze(self):
-        print("enter analyze")
+    def analyze(self, q_table):
         # Initialize the output
+        # print("analyse q table", q_table)
         mote_transmission_updates = {}
         # Retrieve the Q-table and mote states
-        Final_Q_table = self.knowledge.analysis_data.get("QTable", {})
+        Final_Q_table = q_table
         mote_states = self.knowledge.monitored_data.get("moteStates", [])
+        print("enter analyze ", Final_Q_table)
+
 
         initial_mote_id = 0
 
@@ -351,7 +326,7 @@ class QBasedStrategy(Strategy):
             initial_mote_id += 1
     
             # Analyze the state and determine the new transmission power
-            new_transmission_power = self.analyze_state(mote)
+            new_transmission_power = self.analyze_state(mote, Final_Q_table)
 
             # Store the result
             mote_transmission_updates[mote_id] = new_transmission_power
@@ -359,7 +334,7 @@ class QBasedStrategy(Strategy):
             self.knowledge.analysis_data[mote_id] = {
                 "recommended_power": new_transmission_power
             }
-            print("new transmission power", self.knowledge.analysis_data)
+            #print("new transmission power", self.knowledge.analysis_data)
         return True
              
 
@@ -371,7 +346,6 @@ class QBasedStrategy(Strategy):
         for mote_id, analysis in self.knowledge.analysis_data.items():
             if "recommended_power" in analysis:
                 new_power = analysis["recommended_power"]
-                print("the values in plan", mote_id, new_power)
                 # Create adaptation action for the mote's power setting
                 adaptations.append({
                     "id": mote_id,

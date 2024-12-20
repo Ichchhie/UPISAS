@@ -53,23 +53,23 @@ class Strategy(ABC):
         if with_validation:
             if(not self.knowledge.adaptation_options_schema): self.get_adaptation_options_schema()
             validate_schema(self.knowledge.adaptation_options, self.knowledge.adaptation_options_schema)
-        logging.info("adaptation_options set to: ")
-        pp.pprint(self.knowledge.adaptation_options)
+        # logging.info("adaptation_options set to: ")
+        # pp.pprint(self.knowledge.adaptation_options)
 
     def get_monitor_schema(self, endpoint_suffix = "monitor_schema"):
         self.knowledge.monitor_schema = self._perform_get_request(endpoint_suffix)
-        logging.info("monitor_schema set to: ")
-        pp.pprint(self.knowledge.monitor_schema)
+        # logging.info("monitor_schema set to: ")
+        # pp.pprint(self.knowledge.monitor_schema)
 
     def get_execute_schema(self, endpoint_suffix = "execute_schema"):
         self.knowledge.execute_schema = self._perform_get_request(endpoint_suffix)
-        logging.info("execute_schema set to: ")
-        pp.pprint(self.knowledge.execute_schema)
+        # logging.info("execute_schema set to: ")
+        # pp.pprint(self.knowledge.execute_schema)
 
     def get_adaptation_options_schema(self, endpoint_suffix: "API Endpoint" = "adaptation_options_schema"):
         self.knowledge.adaptation_options_schema = self._perform_get_request(endpoint_suffix)
-        logging.info("adaptation_options_schema set to: ")
-        pp.pprint(self.knowledge.adaptation_options_schema)
+        # logging.info("adaptation_options_schema set to: ")
+        # pp.pprint(self.knowledge.adaptation_options_schema)
 
     def _perform_get_request(self, endpoint_suffix: "API Endpoint"):
         url = '/'.join([self.exemplar.base_endpoint, endpoint_suffix])
